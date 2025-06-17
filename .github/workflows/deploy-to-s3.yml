@@ -1,4 +1,4 @@
-# GitHub workflow for S3 deployment with CloudFront invalidation
+# GitHub workflow for S3 deployment
 name: CI/CD Pipeline to Deploy Static Website to S3
 
 on:
