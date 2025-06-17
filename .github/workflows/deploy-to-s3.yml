@@ -1,0 +1,51 @@
+name: CI/CD Pipeline to Deploy Static Website to S3
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript
+
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
+  deploy:
+    name: Deploy to S3
+    needs: security-scan
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
+
+      - name: Sync Files to S3
+        run: |
+          aws s3 sync ./site/ s3://${{ secrets.S3_BUCKET_NAME }} --delete
+          
+      - name: Invalidate CloudFront (if configured)
+        if: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID != '' }}
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
